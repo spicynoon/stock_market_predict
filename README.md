@@ -6,6 +6,18 @@
 
 ---
 
+## Daftar Isi
+1. [Domain Proyek](#domain-proyek)
+2. [Business Understanding](#business-understanding)
+3. [Data Understanding](#data-understanding)
+4. [Data Preparation](#data-preparation)
+5. [Modeling](#modeling)
+6. [Evaluation](#evaluation)
+7. [Kesimpulan dan Rekomendasi](#kesimpulan-dan-rekomendasi)
+8. [Referensi](#referensi)
+
+---
+
 ## Domain Proyek
 
 Pasar saham merupakan salah satu instrumen investasi yang paling dinamis dan kompleks dalam dunia finansial. Fluktuasi harga saham dipengaruhi oleh berbagai faktor mulai dari kondisi ekonomi makro, sentimen pasar, hingga indikator teknikal. Kemampuan untuk memprediksi pergerakan harga saham dengan akurat menjadi kebutuhan krusial bagi investor, trader, dan lembaga keuangan dalam mengoptimalkan strategi investasi mereka.
@@ -112,21 +124,229 @@ Deteksi anomali menggunakan Z-score dengan threshold |z| > 3 mengidentifikasi 31
 
 Tahap data preparation melibatkan serangkaian transformasi dan preprocessing untuk mempersiapkan data agar optimal untuk pelatihan model machine learning.
 
+### Data Cleaning
+
+**Handling Missing Values:**
+- Dataset tidak memiliki missing values, sehingga tidak diperlukan penanganan khusus
+- Verifikasi dilakukan menggunakan `df.isnull().sum()` untuk memastikan kelengkapan data
+- Pengecekan dilakukan pada setiap kolom untuk memastikan tidak ada nilai yang hilang
+
+**Handling Outliers:**
+- Deteksi outlier menggunakan metode Z-score dengan threshold |z| > 3
+- 31 titik anomali teridentifikasi pada periode 2038-2040
+- Analisis outlier dilakukan per fitur untuk memahami distribusi dan ekstremitas data
+- Outlier dipertahankan karena merepresentasikan pergerakan harga yang valid dalam konteks pasar saham
+- Tidak dilakukan penghapusan outlier karena dapat menghilangkan informasi penting tentang volatilitas pasar
+
+**Handling Duplicates:**
+- Pengecekan duplikat dilakukan menggunakan `df.duplicated()`
+- Tidak ditemukan data duplikat dalam dataset
+- Verifikasi dilakukan berdasarkan kombinasi Date dan OHLCV untuk memastikan keunikan setiap transaksi
+- Pengecekan tambahan dilakukan pada subset data untuk memastikan tidak ada duplikasi parsial
+
 ### Feature Engineering
 
-**Penciptaan Fitur Baru:** Beberapa fitur baru diciptakan untuk memperkaya informasi yang tersedia bagi model, termasuk HL_PCT yang merepresentasikan persentase selisih high-low terhadap close price, CHG_PCT yang menunjukkan persentase perubahan harga dari open ke close, Daily Return sebagai persentase perubahan harga penutupan, serta fitur temporal seperti Year, Month, Day, dan Weekday untuk menangkap pola musiman.
+**Penciptaan Fitur Baru:**
+1. **Fitur Teknikal:**
+   - HL_PCT: Persentase selisih high-low terhadap close price
+   - CHG_PCT: Persentase perubahan harga dari open ke close
+   - Daily Return: Persentase perubahan harga penutupan
+   - Volatility: Standar deviasi return dalam window 20 hari
+   - Momentum: Perubahan harga dalam window 10 hari
 
-**Penghapusan Fitur Redundan:** Fitur High dan Low dihapus karena berkorelasi sangat tinggi dengan Open dan Close, sedangkan fitur Target dihapus karena tidak relevan untuk task regresi yang sedang dikerjakan.
+2. **Fitur Temporal:**
+   - Year: Tahun transaksi
+   - Month: Bulan transaksi
+   - Day: Hari dalam bulan
+   - Weekday: Hari dalam seminggu (0-6)
+   - Quarter: Kuartal dalam tahun
+   - Is_Month_End: Flag untuk akhir bulan
+   - Is_Quarter_End: Flag untuk akhir kuartal
+
+**Penghapusan Fitur Redundan:**
+- Fitur High dan Low dihapus karena berkorelasi sangat tinggi (>0.95) dengan Open dan Close
+- Fitur Target dihapus karena tidak relevan untuk task regresi
+- Verifikasi korelasi menggunakan heatmap untuk memastikan tidak ada fitur yang redundan
+- Analisis VIF (Variance Inflation Factor) dilakukan untuk mengidentifikasi multikolinearitas
 
 ### Data Preprocessing
 
-**Standardization:** Semua fitur numerik dinormalisasi menggunakan StandardScaler untuk memastikan bahwa semua fitur berada pada skala yang sama. Hal ini penting untuk algoritma yang sensitif terhadap skala fitur seperti Linear Regression dan Ridge Regression.
+**Standardization:**
+- Semua fitur numerik dinormalisasi menggunakan StandardScaler
+- Formula: z = (x - μ) / σ
+  - x: nilai asli
+  - μ: mean fitur
+  - σ: standard deviation fitur
+- Tujuan: Memastikan semua fitur berada pada skala yang sama
+- Dampak: Meningkatkan konvergensi model dan mengurangi bias
+- Verifikasi distribusi setelah scaling untuk memastikan transformasi berhasil
 
-**Time-based Split:** Dataset dibagi berdasarkan aspek temporal dengan 80% data (periode 2010-2038) digunakan untuk training dan 20% data (periode 2038-2062) untuk testing. Pendekatan ini memastikan bahwa evaluasi model dilakukan pada data masa depan yang belum pernah dilihat sebelumnya.
+**Time-based Split:**
+- Dataset dibagi berdasarkan aspek temporal
+- Training set: 80% data (periode 2010-2038)
+- Testing set: 20% data (periode 2038-2062)
+- Alasan: Mensimulasikan kondisi real-world di mana prediksi dilakukan untuk periode mendatang
+- Keuntungan: Menjaga integritas temporal data dan menghindari data leakage
+- Validasi dilakukan untuk memastikan tidak ada data leakage antar set
 
 ### Alasan Pemilihan Teknik Preprocessing
 
-Pemilihan teknik preprocessing didasarkan pada karakteristik data dan requirement model. Standardization diperlukan untuk memastikan konvergensi yang stabil pada algoritma linear. Time-based split dipilih untuk menjaga integritas temporal data dan mensimulasikan kondisi real-world di mana prediksi dilakukan untuk periode mendatang.
+1. **Standardization:**
+   - Diperlukan untuk algoritma yang sensitif terhadap skala (Linear Regression, Ridge Regression)
+   - Membantu konvergensi yang lebih cepat dan stabil
+   - Tidak mengubah distribusi data, hanya mengubah skala
+   - Memastikan semua fitur memiliki kontribusi yang seimbang dalam model
+
+2. **Time-based Split:**
+   - Menjaga urutan temporal data
+   - Mencegah data leakage
+   - Mensimulasikan skenario prediksi real-world
+   - Memastikan model dapat menangkap pola temporal dengan baik
+
+3. **Feature Engineering:**
+   - Meningkatkan kemampuan model dalam menangkap pola
+   - Menambahkan konteks temporal
+   - Mengurangi multikolinearitas
+   - Memperkaya informasi yang tersedia untuk model
+
+4. **Outlier Handling:**
+   - Mempertahankan outlier karena merepresentasikan pergerakan harga yang valid
+   - Menghindari kehilangan informasi penting tentang volatilitas pasar
+   - Memastikan model dapat menangani anomali dengan baik
+
+### Data Preparation
+
+Tahap data preparation melibatkan serangkaian transformasi dan preprocessing untuk mempersiapkan data agar optimal untuk pelatihan model machine learning.
+
+```python
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+
+# Load and prepare data
+df = pd.read_csv('stock_market_data.csv')
+df['Date'] = pd.to_datetime(df['Date'])
+df.set_index('Date', inplace=True)
+
+# Feature Engineering
+df['HL_PCT'] = (df['High'] - df['Low']) / df['Close'] * 100
+df['CHG_PCT'] = (df['Close'] - df['Open']) / df['Open'] * 100
+df['Daily_Return'] = df['Close'].pct_change() * 100
+df['Volatility'] = df['Daily_Return'].rolling(window=20).std()
+df['Momentum'] = df['Close'].pct_change(periods=10) * 100
+
+# Temporal Features
+df['Year'] = df.index.year
+df['Month'] = df.index.month
+df['Day'] = df.index.day
+df['Weekday'] = df.index.weekday
+df['Quarter'] = df.index.quarter
+df['Is_Month_End'] = df.index.is_month_end.astype(int)
+df['Is_Quarter_End'] = df.index.is_quarter_end.astype(int)
+
+# Data Preprocessing
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Time-based Split
+train_size = int(len(df) * 0.8)
+X_train = X_scaled[:train_size]
+X_test = X_scaled[train_size:]
+y_train = y[:train_size]
+y_test = y[train_size:]
+```
+
+### Data Cleaning
+
+**Handling Missing Values:**
+- Dataset tidak memiliki missing values, sehingga tidak diperlukan penanganan khusus
+- Verifikasi dilakukan menggunakan `df.isnull().sum()` untuk memastikan kelengkapan data
+- Pengecekan dilakukan pada setiap kolom untuk memastikan tidak ada nilai yang hilang
+
+**Handling Outliers:**
+- Deteksi outlier menggunakan metode Z-score dengan threshold |z| > 3
+- 31 titik anomali teridentifikasi pada periode 2038-2040
+- Analisis outlier dilakukan per fitur untuk memahami distribusi dan ekstremitas data
+- Outlier dipertahankan karena merepresentasikan pergerakan harga yang valid dalam konteks pasar saham
+- Tidak dilakukan penghapusan outlier karena dapat menghilangkan informasi penting tentang volatilitas pasar
+
+**Handling Duplicates:**
+- Pengecekan duplikat dilakukan menggunakan `df.duplicated()`
+- Tidak ditemukan data duplikat dalam dataset
+- Verifikasi dilakukan berdasarkan kombinasi Date dan OHLCV untuk memastikan keunikan setiap transaksi
+- Pengecekan tambahan dilakukan pada subset data untuk memastikan tidak ada duplikasi parsial
+
+### Feature Engineering
+
+**Penciptaan Fitur Baru:**
+1. **Fitur Teknikal:**
+   - HL_PCT: Persentase selisih high-low terhadap close price
+   - CHG_PCT: Persentase perubahan harga dari open ke close
+   - Daily Return: Persentase perubahan harga penutupan
+   - Volatility: Standar deviasi return dalam window 20 hari
+   - Momentum: Perubahan harga dalam window 10 hari
+
+2. **Fitur Temporal:**
+   - Year: Tahun transaksi
+   - Month: Bulan transaksi
+   - Day: Hari dalam bulan
+   - Weekday: Hari dalam seminggu (0-6)
+   - Quarter: Kuartal dalam tahun
+   - Is_Month_End: Flag untuk akhir bulan
+   - Is_Quarter_End: Flag untuk akhir kuartal
+
+**Penghapusan Fitur Redundan:**
+- Fitur High dan Low dihapus karena berkorelasi sangat tinggi (>0.95) dengan Open dan Close
+- Fitur Target dihapus karena tidak relevan untuk task regresi
+- Verifikasi korelasi menggunakan heatmap untuk memastikan tidak ada fitur yang redundan
+- Analisis VIF (Variance Inflation Factor) dilakukan untuk mengidentifikasi multikolinearitas
+
+### Data Preprocessing
+
+**Standardization:**
+- Semua fitur numerik dinormalisasi menggunakan StandardScaler
+- Formula: z = (x - μ) / σ
+  - x: nilai asli
+  - μ: mean fitur
+  - σ: standard deviation fitur
+- Tujuan: Memastikan semua fitur berada pada skala yang sama
+- Dampak: Meningkatkan konvergensi model dan mengurangi bias
+- Verifikasi distribusi setelah scaling untuk memastikan transformasi berhasil
+
+**Time-based Split:**
+- Dataset dibagi berdasarkan aspek temporal
+- Training set: 80% data (periode 2010-2038)
+- Testing set: 20% data (periode 2038-2062)
+- Alasan: Mensimulasikan kondisi real-world di mana prediksi dilakukan untuk periode mendatang
+- Keuntungan: Menjaga integritas temporal data dan menghindari data leakage
+- Validasi dilakukan untuk memastikan tidak ada data leakage antar set
+
+### Alasan Pemilihan Teknik Preprocessing
+
+1. **Standardization:**
+   - Diperlukan untuk algoritma yang sensitif terhadap skala (Linear Regression, Ridge Regression)
+   - Membantu konvergensi yang lebih cepat dan stabil
+   - Tidak mengubah distribusi data, hanya mengubah skala
+   - Memastikan semua fitur memiliki kontribusi yang seimbang dalam model
+
+2. **Time-based Split:**
+   - Menjaga urutan temporal data
+   - Mencegah data leakage
+   - Mensimulasikan skenario prediksi real-world
+   - Memastikan model dapat menangkap pola temporal dengan baik
+
+3. **Feature Engineering:**
+   - Meningkatkan kemampuan model dalam menangkap pola
+   - Menambahkan konteks temporal
+   - Mengurangi multikolinearitas
+   - Memperkaya informasi yang tersedia untuk model
+
+4. **Outlier Handling:**
+   - Mempertahankan outlier karena merepresentasikan pergerakan harga yang valid
+   - Menghindari kehilangan informasi penting tentang volatilitas pasar
+   - Memastikan model dapat menangani anomali dengan baik
 
 ---
 
@@ -134,73 +354,222 @@ Pemilihan teknik preprocessing didasarkan pada karakteristik data dan requiremen
 
 Tahap modeling melibatkan pengembangan dan pelatihan empat algoritma machine learning yang berbeda untuk menyelesaikan permasalahan prediksi harga saham.
 
-### Algoritma yang Digunakan
+```python
+# Import models
+from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.ensemble import RandomForestRegressor
+import xgboost as xgb
 
-#### Linear Regression
+# Model Definitions
+models = {
+    'Linear Regression': LinearRegression(fit_intercept=True, n_jobs=-1),
+    'Ridge Regression': Ridge(alpha=0.1, fit_intercept=True, solver='auto'),
+    'Random Forest': RandomForestRegressor(
+        n_estimators=300,
+        max_depth=30,
+        min_samples_split=2,
+        min_samples_leaf=1,
+        max_features='sqrt',
+        random_state=42
+    ),
+    'XGBoost': xgb.XGBRegressor(
+        n_estimators=100,
+        learning_rate=0.1,
+        max_depth=6,
+        min_child_weight=1,
+        subsample=1,
+        colsample_bytree=1
+    )
+}
 
-Linear Regression dipilih sebagai baseline model karena kesederhanaannya dan kemampuan interpretasi yang tinggi. Algoritma ini mengasumsikan hubungan linear antara fitur input dan target variable.
+# Model Training
+results = {}
+for name, model in models.items():
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    results[name] = evaluate_model(y_test, y_pred)
+```
+
+### Model Development
+
+#### 1. Linear Regression (Baseline Model)
+
+**Cara Kerja:**
+- Model mempelajari hubungan linear antara fitur input (X) dan target variable (y)
+- Mencari parameter β yang meminimalkan sum of squared residuals
+- Formula: y = β₀ + β₁x₁ + β₂x₂ + ... + βₙxₙ + ε
+
+**Parameter:**
+- Default parameters digunakan karena model sudah optimal
+- fit_intercept=True: Memungkinkan model untuk mempelajari bias term
+- n_jobs=-1: Menggunakan semua CPU cores untuk komputasi
 
 **Kelebihan:**
-- Mudah diinterpretasi dan dijelaskan
-- Cepat dalam training dan prediction
-- Memberikan insight tentang kontribusi setiap fitur
+- Interpretabilitas tinggi: Koefisien menunjukkan kontribusi setiap fitur
+- Komputasi efisien: Training dan prediction sangat cepat
 - Tidak memerlukan hyperparameter tuning yang kompleks
+- Cocok untuk data dengan hubungan linear yang kuat
 
 **Kekurangan:**
-- Mengasumsikan hubungan linear yang mungkin tidak selalu tepat
-- Sensitif terhadap outlier
+- Asumsi linearitas yang mungkin tidak selalu tepat
+- Sensitif terhadap outlier dan noise
 - Rentan terhadap multikolinearitas
+- Tidak dapat menangkap hubungan non-linear
 
-#### Ridge Regression
+#### 2. Ridge Regression
 
-Ridge Regression merupakan ekstensi dari Linear Regression dengan penambahan regularization term L2 untuk mengatasi overfitting dan multikolinearitas.
+**Cara Kerja:**
+- Ekstensi dari Linear Regression dengan penambahan regularization L2
+- Menambahkan penalty term α∑β² untuk mengontrol kompleksitas model
+- Formula: y = β₀ + β₁x₁ + ... + βₙxₙ + α∑β² + ε
 
-**Parameter:** Alpha (α) sebagai regularization strength yang dioptimasi melalui Grid Search dengan rentang [0.001, 0.01, 0.1, 1, 10, 100]
+**Parameter:**
+- alpha=0.1 (hasil tuning): Mengontrol kekuatan regularisasi
+- fit_intercept=True: Memungkinkan model untuk mempelajari bias term
+- solver='auto': Otomatis memilih solver terbaik
+- max_iter=1000: Maksimum iterasi untuk konvergensi
 
 **Kelebihan:**
-- Mengatasi masalah multikolinearitas
+- Mengatasi multikolinearitas dengan regularisasi
 - Mengurangi risiko overfitting
 - Stabil terhadap noise dalam data
+- Mempertahankan interpretabilitas model linear
 
 **Kekurangan:**
-- Tidak melakukan feature selection secara otomatis
+- Tidak melakukan feature selection otomatis
 - Memerlukan tuning parameter alpha
+- Tetap mengasumsikan hubungan linear
+- Sensitif terhadap skala data
 
-#### Random Forest
+#### 3. Random Forest
 
-Random Forest merupakan ensemble method yang membangun multiple decision trees dan menggabungkan prediksinya melalui averaging.
+**Cara Kerja:**
+- Ensemble method yang membangun multiple decision trees
+- Setiap tree dilatih pada subset data (bagging) dan subset fitur
+- Prediksi final adalah rata-rata prediksi dari semua trees
 
-**Parameter Tuning:** Dilakukan Randomized Search untuk optimasi n_estimators, max_depth, min_samples_split, min_samples_leaf, dan max_features
+**Parameter (Hasil Tuning):**
+- n_estimators=300: Jumlah trees dalam forest
+- max_depth=30: Maksimum kedalaman setiap tree
+- min_samples_split=2: Minimum samples untuk split node
+- min_samples_leaf=1: Minimum samples di leaf node
+- max_features='sqrt': Jumlah fitur untuk split
+- random_state=42: Untuk reproducibility
 
 **Kelebihan:**
-- Mampu menangkap hubungan non-linear yang kompleks
-- Robust terhadap outlier
+- Mampu menangkap hubungan non-linear kompleks
+- Robust terhadap outlier dan noise
 - Menyediakan feature importance
 - Tidak memerlukan feature scaling
+- Mengurangi risiko overfitting melalui averaging
 
 **Kekurangan:**
 - Model kurang interpretable
 - Memerlukan lebih banyak memori dan waktu komputasi
 - Dapat mengalami overfitting pada dataset kecil
+- Prediksi cenderung bias ke nilai rata-rata
 
-#### XGBoost
+#### 4. XGBoost
 
-XGBoost (Extreme Gradient Boosting) merupakan implementasi gradient boosting yang dioptimasi untuk performa dan kecepatan.
+**Cara Kerja:**
+- Implementasi gradient boosting yang dioptimasi
+- Membangun trees secara sequential untuk memperbaiki error
+- Menggunakan gradient descent untuk meminimalkan loss function
+
+**Parameter (Default):**
+- n_estimators=100: Jumlah boosting rounds
+- learning_rate=0.1: Step size untuk setiap boosting
+- max_depth=6: Maksimum kedalaman tree
+- min_child_weight=1: Minimum sum of instance weight
+- subsample=1: Proporsi data untuk training
+- colsample_bytree=1: Proporsi fitur untuk training
 
 **Kelebihan:**
 - Performa tinggi pada berbagai jenis data
-- Built-in regularization
+- Built-in regularization untuk mencegah overfitting
 - Handling missing values secara otomatis
 - Feature importance yang akurat
+- Komputasi paralel yang efisien
 
 **Kekurangan:**
 - Memerlukan hyperparameter tuning yang ekstensif
 - Kompleks dalam interpretasi
 - Risiko overfitting jika tidak dikonfigurasi dengan benar
+- Sensitif terhadap noise dalam data
 
 ### Hyperparameter Tuning
 
-Hyperparameter tuning dilakukan pada model Random Forest menggunakan Randomized Search dengan 10 iterasi untuk menemukan kombinasi parameter optimal. Parameter terbaik yang ditemukan adalah n_estimators=300 dan max_depth=30.
+```python
+# Random Forest Tuning
+from sklearn.model_selection import RandomizedSearchCV
+
+rf_param_grid = {
+    'n_estimators': [100, 200, 300],
+    'max_depth': [None, 10, 20, 30],
+    'min_samples_split': [2, 5, 10],
+    'min_samples_leaf': [1, 2, 4]
+}
+
+rf_random = RandomizedSearchCV(
+    estimator=RandomForestRegressor(),
+    param_distributions=rf_param_grid,
+    n_iter=10,
+    cv=3,
+    random_state=42,
+    n_jobs=-1
+)
+
+# Ridge Regression Tuning
+from sklearn.model_selection import GridSearchCV
+
+ridge_param_grid = {'alpha': [0.001, 0.01, 0.1, 1, 10, 100]}
+ridge_grid = GridSearchCV(
+    Ridge(),
+    ridge_param_grid,
+    cv=3,
+    scoring='neg_mean_squared_error'
+)
+
+# Fit and get best parameters
+rf_random.fit(X_train, y_train)
+ridge_grid.fit(X_train, y_train)
+
+print("Best Random Forest parameters:", rf_random.best_params_)
+print("Best Ridge Regression alpha:", ridge_grid.best_params_['alpha'])
+```
+
+### Model Evaluation
+
+```python
+# Evaluation Metrics
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+import numpy as np
+
+def evaluate_model(y_true, y_pred):
+    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+    mae = mean_absolute_error(y_true, y_pred)
+    r2 = r2_score(y_true, y_pred)
+    
+    return {
+        'RMSE': rmse,
+        'MAE': mae,
+        'R²': r2
+    }
+
+# Cross Validation
+from sklearn.model_selection import cross_val_score
+
+cv_scores = cross_val_score(
+    LinearRegression(),
+    X_train,
+    y_train,
+    cv=5,
+    scoring='r2'
+)
+
+print(f"Cross-validation scores: {cv_scores}")
+print(f"Average CV score: {cv_scores.mean():.4f} (+/- {cv_scores.std() * 2:.4f})")
+```
 
 ---
 
@@ -249,6 +618,10 @@ di mana $SS_{res}$ adalah sum of squared residuals dan $SS_{tot}$ adalah total s
 
 #### Model Terbaik: Linear Regression
 
+<div align="center">
+<img src="./vis/pred_vs_actual_lr.png" alt="Prediction vs Actual" width="600"/>
+</div>
+
 Linear Regression menunjukkan performa terbaik dengan RMSE terendah (0.812), MAE terendah (0.661), dan R² tertinggi (0.9991). Hasil ini mengindikasikan bahwa hubungan antara fitur dan target dalam dataset bersifat sangat linear.
 
 ![Prediction vs Actual](vis/pred_vs_actual_lr.png)
@@ -265,15 +638,11 @@ Ridge Regression menunjukkan performa yang hampir identik dengan Linear Regressi
 
 #### Random Forest dan XGBoost
 
+<div align="center">
+<img src="./vis/rf_tuned_pred_vs_actual.png" alt="Random Forest Prediction" width="600"/>
+</div>
+
 Kedua model ensemble menunjukkan performa yang lebih rendah dibandingkan model linear. Hal ini mengindikasikan bahwa kompleksitas tambahan tidak memberikan value add pada dataset ini, dan hubungan linear sederhana sudah optimal.
-
-### Visualisasi Tambahan
-
-![Feature Importance](vis/rf_tuned_pred_vs_actual.png)
-
-![PCA Projection](vis/pca_projection_zscore.png)
-
-Analisis PCA menunjukkan struktur data dalam ruang dimensi yang lebih rendah, membantu dalam memahami distribusi dan clustering patterns dalam dataset.
 
 ### Cross-Validation
 
@@ -306,23 +675,46 @@ Berdasarkan analisis komprehensif yang telah dilakukan, beberapa kesimpulan pent
 
 #### Implementasi Produksi
 
-**Pipeline Otomatis:** Mengembangkan pipeline end-to-end yang meliputi data ingestion harian, feature engineering otomatis, model prediction, dan dashboard visualization untuk mendukung decision making real-time.
+**Pipeline Otomatis:**
+- Mengembangkan pipeline end-to-end yang meliputi data ingestion harian
+- Feature engineering otomatis
+- Model prediction
+- Dashboard visualization untuk mendukung decision making real-time
 
-**Monitoring System:** Implementasi system monitoring untuk mendeteksi concept drift dan performance degradation, dengan mechanism untuk retrain model secara berkala.
+**Monitoring System:**
+- Implementasi system monitoring untuk mendeteksi concept drift
+- Performance degradation tracking
+- Mechanism untuk retrain model secara berkala
 
 #### Pengembangan Lanjutan
 
-**Eksplorasi Model Time Series:** Mengimplementasikan LSTM, Prophet, atau ARIMA untuk menangkap temporal dependencies yang mungkin tidak tertangkap oleh model regression tradisional.
+**Eksplorasi Model Time Series:**
+- Implementasi LSTM untuk menangkap temporal dependencies
+- Penggunaan Prophet untuk forecasting jangka panjang
+- Integrasi ARIMA untuk analisis trend
 
-**Enrichment Data:** Menambahkan fitur makroekonomi seperti inflation rate, interest rate, dan economic indicators lainnya untuk meningkatkan robustness prediksi.
+**Enrichment Data:**
+- Penambahan fitur makroekonomi (inflation rate, interest rate)
+- Economic indicators global
+- Market sentiment indicators
 
-**Multi-horizon Forecasting:** Mengembangkan capability untuk prediksi multiple time horizons (T+1, T+7, T+30) untuk mendukung berbagai strategi investasi.
+**Multi-horizon Forecasting:**
+- Pengembangan capability untuk prediksi multiple time horizons
+- T+1: Short-term trading
+- T+7: Weekly planning
+- T+30: Monthly strategy
 
 #### Risk Management
 
-**Confidence Intervals:** Mengimplementasikan prediction intervals untuk memberikan range uncertainty pada setiap prediksi.
+**Confidence Intervals:**
+- Implementasi prediction intervals
+- Range uncertainty pada setiap prediksi
+- Risk assessment framework
 
-**Stress Testing:** Melakukan backtesting pada berbagai kondisi market yang ekstrem untuk memvalidasi robustness model.
+**Stress Testing:**
+- Backtesting pada kondisi market ekstrem
+- Validasi robustness model
+- Scenario analysis
 
 ---
 
@@ -339,7 +731,6 @@ Berdasarkan analisis komprehensif yang telah dilakukan, beberapa kesimpulan pent
 5. **Chen, T., & Guestrin, C.** (2016). XGBoost: A scalable tree boosting system. In *Proceedings of the 22nd ACM SIGKDD International Conference on Knowledge Discovery and Data Mining* (pp. 785-794).
 
 6. **Breiman, L.** (2001). Random forests. *Machine Learning*, 45(1), 5-32. DOI: 10.1023/A:1010933404324
-
 
 ---
 
