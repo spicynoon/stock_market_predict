@@ -2,7 +2,6 @@
 
 **Proyek Machine Learning - Analisis Prediktif Pasar Saham**  
 **Author:** Yandiyan
-**Tanggal Selesai:** 24 Mei 2025
 
 ---
 
@@ -96,25 +95,32 @@ Dataset yang digunakan dalam proyek ini adalah [Stock Market Dataset for Predict
 
 #### Analisis Distribusi Data
 
-![Distribusi Harga Open](vis/dist_boxplot_open.png)
+![Distribusi Close](https://github.com/user-attachments/assets/7bea8795-4829-4937-8177-f8d065affb5c)
+![Distribusi High](https://github.com/user-attachments/assets/d034138b-185e-415d-8194-550c2926cfa5)
+![Distribusi Low](https://github.com/user-attachments/assets/54882d9f-3083-4019-82ee-99c5144a0040)
+![Distribusi MACD](https://github.com/user-attachments/assets/0727cff5-f0a3-4637-9343-68b0a9ae46d4)
+![Distribusi Open](https://github.com/user-attachments/assets/7a67edcf-dda9-4f64-8957-7565ab78e595)
+![Distribusi RSI](https://github.com/user-attachments/assets/19bfc8da-8101-4f72-b8ee-4270892dbd4e)
+![Distribusi Sentiment](https://github.com/user-attachments/assets/591467c9-3d2f-4a87-8848-e70d10c1e123)
+![Distribusi Volume](https://github.com/user-attachments/assets/3bf0618e-ee2e-4190-b424-6558a168b7fa)
 
 Distribusi harga pembukaan menunjukkan pola yang relatif simetris dengan beberapa outlier pada nilai negatif yang mengindikasikan adanya data simulasi. Analisis boxplot mengungkapkan bahwa sebagian besar data terkonsentrasi pada rentang nilai tertentu dengan beberapa nilai ekstrem yang perlu mendapat perhatian khusus.
 
 #### Analisis Korelasi
 
-![Correlation Heatmap](vis/correlation_heatmap.png)
+![Correlation Heatmap](https://github.com/user-attachments/assets/8a2c4108-eb05-42a6-a727-a374a9209c63)
 
 Heatmap korelasi menunjukkan hubungan yang sangat kuat antara fitur OHLC (Open, High, Low, Close) dengan koefisien korelasi mendekati 1.0. Hal ini mengindikasikan adanya multikolinearitas yang perlu diatasi dalam tahap preprocessing. Fitur volume dan indikator teknikal menunjukkan korelasi yang lebih moderat terhadap harga penutupan.
 
 #### Analisis Tren
 
-![Moving Average Trend](vis/moving_average_trend.png)
+![Moving Average Trend](https://github.com/user-attachments/assets/98eec666-1cfc-4407-8b35-bd316d6e52f7)
 
 Analisis moving average menggunakan periode 50 dan 200 hari menunjukkan tren jangka panjang yang konsisten. Grafik ini membantu dalam memahami pola pergerakan harga secara makro dan mengidentifikasi periode bullish dan bearish dalam dataset.
 
 #### Deteksi Anomali
 
-![Anomaly Detection](vis/anomaly_zscore_close.png)
+![Anomali Detection](https://github.com/user-attachments/assets/764b90ab-c876-4bcf-a433-6026d3d5369a)
 
 Deteksi anomali menggunakan Z-score dengan threshold |z| > 3 mengidentifikasi 31 titik anomali yang terjadi terutama pada periode 2038-2040. Anomali ini perlu dipertimbangkan dalam pengembangan model untuk memastikan robustness prediksi.
 
@@ -173,7 +179,7 @@ Tahap data preparation melibatkan serangkaian transformasi dan preprocessing unt
 
 **Standardization:**
 - Semua fitur numerik dinormalisasi menggunakan StandardScaler
-- Formula: z = (x - μ) / σ
+- Formula: $z = (x - μ) / σ$
   - x: nilai asli
   - μ: mean fitur
   - σ: standard deviation fitur
@@ -219,43 +225,49 @@ Tahap data preparation melibatkan serangkaian transformasi dan preprocessing unt
 Tahap data preparation melibatkan serangkaian transformasi dan preprocessing untuk mempersiapkan data agar optimal untuk pelatihan model machine learning.
 
 ```python
-# Import necessary libraries
-import pandas as pd
-import numpy as np
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
+# salin data asli
+df_prep = df.copy()
 
-# Load and prepare data
-df = pd.read_csv('stock_market_data.csv')
-df['Date'] = pd.to_datetime(df['Date'])
-df.set_index('Date', inplace=True)
+# drop kolom multikolinear & tidak dipakai
+df_prep.drop(['High', 'Low', 'Target'], axis=1, inplace=True)
 
-# Feature Engineering
-df['HL_PCT'] = (df['High'] - df['Low']) / df['Close'] * 100
-df['CHG_PCT'] = (df['Close'] - df['Open']) / df['Open'] * 100
-df['Daily_Return'] = df['Close'].pct_change() * 100
-df['Volatility'] = df['Daily_Return'].rolling(window=20).std()
-df['Momentum'] = df['Close'].pct_change(periods=10) * 100
+# fitur derivatif teknikal
+df_prep['HL_PCT'] = (df['High'] - df['Low']) / df['Close'] * 100
+df_prep['CHG_PCT'] = (df['Close'] - df['Open']) / df['Open'] * 100
 
-# Temporal Features
-df['Year'] = df.index.year
-df['Month'] = df.index.month
-df['Day'] = df.index.day
-df['Weekday'] = df.index.weekday
-df['Quarter'] = df.index.quarter
-df['Is_Month_End'] = df.index.is_month_end.astype(int)
-df['Is_Quarter_End'] = df.index.is_quarter_end.astype(int)
+# fitur waktu
+df_prep['Year'] = df_prep['Date'].dt.year
+df_prep['Month'] = df_prep['Date'].dt.month
+df_prep['Day'] = df_prep['Date'].dt.day
+df_prep['Weekday'] = df_prep['Date'].dt.weekday
 
-# Data Preprocessing
+# tentukan fitur dan target
+target_col = 'Close'
+feature_cols = [
+    'Open', 'Volume', 'RSI', 'MACD', 'Sentiment', 'Daily Return',
+    'HL_PCT', 'CHG_PCT', 'Year', 'Month', 'Day', 'Weekday'
+]
+
+# buang NA hasil rolling/pct_change
+df_model = df_prep.dropna(subset=feature_cols + [target_col]).copy()
+
+# scaling
 scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+X_scaled = scaler.fit_transform(df_model[feature_cols])
+X_scaled_df = pd.DataFrame(X_scaled, columns=feature_cols, index=df_model.index)
 
-# Time-based Split
-train_size = int(len(df) * 0.8)
-X_train = X_scaled[:train_size]
-X_test = X_scaled[train_size:]
-y_train = y[:train_size]
-y_test = y[train_size:]
+# gabungkan dengan target & date
+df_final = X_scaled_df.copy()
+df_final['Close'] = df_model['Close'].values
+df_final['Date'] = df_model['Date'].values
+
+# split berdasarkan waktu (80:20)
+split_index = int(len(df_final) * 0.8)
+train = df_final.iloc[:split_index]
+test = df_final.iloc[split_index:]
+
+# preview hasil akhir
+train.head()
 ```
 
 ### Data Cleaning
@@ -307,7 +319,7 @@ y_test = y[train_size:]
 
 **Standardization:**
 - Semua fitur numerik dinormalisasi menggunakan StandardScaler
-- Formula: z = (x - μ) / σ
+- Formula: $z = (x - μ) / σ$
   - x: nilai asli
   - μ: mean fitur
   - σ: standard deviation fitur
@@ -355,39 +367,52 @@ y_test = y[train_size:]
 Tahap modeling melibatkan pengembangan dan pelatihan empat algoritma machine learning yang berbeda untuk menyelesaikan permasalahan prediksi harga saham.
 
 ```python
-# Import models
+# import models
 from sklearn.linear_model import LinearRegression, Ridge
 from sklearn.ensemble import RandomForestRegressor
 import xgboost as xgb
 
-# Model Definitions
-models = {
-    'Linear Regression': LinearRegression(fit_intercept=True, n_jobs=-1),
-    'Ridge Regression': Ridge(alpha=0.1, fit_intercept=True, solver='auto'),
-    'Random Forest': RandomForestRegressor(
-        n_estimators=300,
-        max_depth=30,
-        min_samples_split=2,
-        min_samples_leaf=1,
-        max_features='sqrt',
-        random_state=42
-    ),
-    'XGBoost': xgb.XGBRegressor(
-        n_estimators=100,
-        learning_rate=0.1,
-        max_depth=6,
-        min_child_weight=1,
-        subsample=1,
-        colsample_bytree=1
-    )
+# fitur & target
+X_train = train.drop(['Close', 'Date'], axis=1)
+y_train = train['Close']
+X_test = test.drop(['Close', 'Date'], axis=1)
+y_test = test['Close']
+
+# simpan hasil evaluasi
+results = {}
+
+# 1. Linear Regression
+lr = LinearRegression()
+lr.fit(X_train, y_train)
+y_pred_lr = lr.predict(X_test)
+results['Linear Regression'] = {
+    'RMSE': np.sqrt(mean_squared_error(y_test, y_pred_lr)),
+    'MAE': mean_absolute_error(y_test, y_pred_lr),
+    'R2': r2_score(y_test, y_pred_lr)
 }
 
-# Model Training
-results = {}
-for name, model in models.items():
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    results[name] = evaluate_model(y_test, y_pred)
+# 2. Random Forest
+rf = RandomForestRegressor(n_estimators=100, random_state=42)
+rf.fit(X_train, y_train)
+y_pred_rf = rf.predict(X_test)
+results['Random Forest'] = {
+    'RMSE': np.sqrt(mean_squared_error(y_test, y_pred_rf)),
+    'MAE': mean_absolute_error(y_test, y_pred_rf),
+    'R2': r2_score(y_test, y_pred_rf)
+}
+
+# 3. XGBoost
+xgb = XGBRegressor(n_estimators=100, random_state=42)
+xgb.fit(X_train, y_train)
+y_pred_xgb = xgb.predict(X_test)
+results['XGBoost'] = {
+    'RMSE': np.sqrt(mean_squared_error(y_test, y_pred_xgb)),
+    'MAE': mean_absolute_error(y_test, y_pred_xgb),
+    'R2': r2_score(y_test, y_pred_xgb)
+}
+
+# tampilkan hasil
+pd.DataFrame(results).T
 ```
 
 ### Model Development
@@ -397,7 +422,7 @@ for name, model in models.items():
 **Cara Kerja:**
 - Model mempelajari hubungan linear antara fitur input (X) dan target variable (y)
 - Mencari parameter β yang meminimalkan sum of squared residuals
-- Formula: y = β₀ + β₁x₁ + β₂x₂ + ... + βₙxₙ + ε
+- Formula: $y = β₀ + β₁x₁ + β₂x₂ + ... + βₙxₙ + ε$
 
 **Parameter:**
 - Default parameters digunakan karena model sudah optimal
@@ -421,7 +446,7 @@ for name, model in models.items():
 **Cara Kerja:**
 - Ekstensi dari Linear Regression dengan penambahan regularization L2
 - Menambahkan penalty term α∑β² untuk mengontrol kompleksitas model
-- Formula: y = β₀ + β₁x₁ + ... + βₙxₙ + α∑β² + ε
+- Formula: $y = β₀ + β₁x₁ + ... + βₙxₙ + α∑β² + ε$
 
 **Parameter:**
 - alpha=0.1 (hasil tuning): Mengontrol kekuatan regularisasi
@@ -503,6 +528,7 @@ for name, model in models.items():
 # Random Forest Tuning
 from sklearn.model_selection import RandomizedSearchCV
 
+# parameter grid
 rf_param_grid = {
     'n_estimators': [100, 200, 300],
     'max_depth': [None, 10, 20, 30],
@@ -510,32 +536,15 @@ rf_param_grid = {
     'min_samples_leaf': [1, 2, 4]
 }
 
-rf_random = RandomizedSearchCV(
-    estimator=RandomForestRegressor(),
-    param_distributions=rf_param_grid,
-    n_iter=10,
-    cv=3,
-    random_state=42,
-    n_jobs=-1
-)
-
-# Ridge Regression Tuning
-from sklearn.model_selection import GridSearchCV
-
-ridge_param_grid = {'alpha': [0.001, 0.01, 0.1, 1, 10, 100]}
-ridge_grid = GridSearchCV(
-    Ridge(),
-    ridge_param_grid,
-    cv=3,
-    scoring='neg_mean_squared_error'
-)
-
-# Fit and get best parameters
-rf_random.fit(X_train, y_train)
-ridge_grid.fit(X_train, y_train)
-
-print("Best Random Forest parameters:", rf_random.best_params_)
-print("Best Ridge Regression alpha:", ridge_grid.best_params_['alpha'])
+# model & search
+rf_model = RandomForestRegressor(random_state=42)
+rf_search = RandomizedSearchCV(estimator=rf_model,
+                                param_distributions=rf_param_grid,
+                                n_iter=10,
+                                cv=3,
+                                verbose=2,
+                                random_state=42,
+                                n_jobs=-1)
 ```
 
 ### Model Evaluation
@@ -618,17 +627,13 @@ di mana $SS_{res}$ adalah sum of squared residuals dan $SS_{tot}$ adalah total s
 
 #### Model Terbaik: Linear Regression
 
-<div align="center">
-<img src="./vis/pred_vs_actual_lr.png" alt="Prediction vs Actual" width="600"/>
-</div>
+![Predicted vs Actual](https://github.com/user-attachments/assets/fe4524fc-5356-40c3-8e89-abe902bf7ec4)
 
 Linear Regression menunjukkan performa terbaik dengan RMSE terendah (0.812), MAE terendah (0.661), dan R² tertinggi (0.9991). Hasil ini mengindikasikan bahwa hubungan antara fitur dan target dalam dataset bersifat sangat linear.
 
-![Prediction vs Actual](vis/pred_vs_actual_lr.png)
-
 Visualisasi prediction vs actual menunjukkan bahwa prediksi Linear Regression sangat dekat dengan nilai aktual, dengan sebagian besar titik berada tepat di sepanjang garis y=x.
 
-![Residuals Analysis](vis/residuals_lr.png)
+![image](https://github.com/user-attachments/assets/a8c8b130-a9db-4155-9258-93377750f7e5)
 
 Analisis residual menunjukkan distribusi yang simetris di sekitar nol, mengkonfirmasi bahwa asumsi linear model terpenuhi dengan baik.
 
@@ -638,9 +643,7 @@ Ridge Regression menunjukkan performa yang hampir identik dengan Linear Regressi
 
 #### Random Forest dan XGBoost
 
-<div align="center">
-<img src="./vis/rf_tuned_pred_vs_actual.png" alt="Random Forest Prediction" width="600"/>
-</div>
+![image](https://github.com/user-attachments/assets/596e407b-03b3-4213-a8f9-6327832520fa)
 
 Kedua model ensemble menunjukkan performa yang lebih rendah dibandingkan model linear. Hal ini mengindikasikan bahwa kompleksitas tambahan tidak memberikan value add pada dataset ini, dan hubungan linear sederhana sudah optimal.
 
