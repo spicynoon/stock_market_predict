@@ -126,100 +126,6 @@ Deteksi anomali menggunakan Z-score dengan threshold |z| > 3 mengidentifikasi 31
 
 ---
 
-## Data Preparation
-
-Tahap data preparation melibatkan serangkaian transformasi dan preprocessing untuk mempersiapkan data agar optimal untuk pelatihan model machine learning.
-
-### Data Cleaning
-
-**Handling Missing Values:**
-- Dataset tidak memiliki missing values, sehingga tidak diperlukan penanganan khusus
-- Verifikasi dilakukan menggunakan `df.isnull().sum()` untuk memastikan kelengkapan data
-- Pengecekan dilakukan pada setiap kolom untuk memastikan tidak ada nilai yang hilang
-
-**Handling Outliers:**
-- Deteksi outlier menggunakan metode Z-score dengan threshold |z| > 3
-- 31 titik anomali teridentifikasi pada periode 2038-2040
-- Analisis outlier dilakukan per fitur untuk memahami distribusi dan ekstremitas data
-- Outlier dipertahankan karena merepresentasikan pergerakan harga yang valid dalam konteks pasar saham
-- Tidak dilakukan penghapusan outlier karena dapat menghilangkan informasi penting tentang volatilitas pasar
-
-**Handling Duplicates:**
-- Pengecekan duplikat dilakukan menggunakan `df.duplicated()`
-- Tidak ditemukan data duplikat dalam dataset
-- Verifikasi dilakukan berdasarkan kombinasi Date dan OHLCV untuk memastikan keunikan setiap transaksi
-- Pengecekan tambahan dilakukan pada subset data untuk memastikan tidak ada duplikasi parsial
-
-### Feature Engineering
-
-**Penciptaan Fitur Baru:**
-1. **Fitur Teknikal:**
-   - HL_PCT: Persentase selisih high-low terhadap close price
-   - CHG_PCT: Persentase perubahan harga dari open ke close
-   - Daily Return: Persentase perubahan harga penutupan
-   - Volatility: Standar deviasi return dalam window 20 hari
-   - Momentum: Perubahan harga dalam window 10 hari
-
-2. **Fitur Temporal:**
-   - Year: Tahun transaksi
-   - Month: Bulan transaksi
-   - Day: Hari dalam bulan
-   - Weekday: Hari dalam seminggu (0-6)
-   - Quarter: Kuartal dalam tahun
-   - Is_Month_End: Flag untuk akhir bulan
-   - Is_Quarter_End: Flag untuk akhir kuartal
-
-**Penghapusan Fitur Redundan:**
-- Fitur High dan Low dihapus karena berkorelasi sangat tinggi (>0.95) dengan Open dan Close
-- Fitur Target dihapus karena tidak relevan untuk task regresi
-- Verifikasi korelasi menggunakan heatmap untuk memastikan tidak ada fitur yang redundan
-- Analisis VIF (Variance Inflation Factor) dilakukan untuk mengidentifikasi multikolinearitas
-
-### Data Preprocessing
-
-**Standardization:**
-- Semua fitur numerik dinormalisasi menggunakan StandardScaler
-- Formula: $z = (x - μ) / σ$
-  - x: nilai asli
-  - μ: mean fitur
-  - σ: standard deviation fitur
-- Tujuan: Memastikan semua fitur berada pada skala yang sama
-- Dampak: Meningkatkan konvergensi model dan mengurangi bias
-- Verifikasi distribusi setelah scaling untuk memastikan transformasi berhasil
-
-**Time-based Split:**
-- Dataset dibagi berdasarkan aspek temporal
-- Training set: 80% data (periode 2010-2038)
-- Testing set: 20% data (periode 2038-2062)
-- Alasan: Mensimulasikan kondisi real-world di mana prediksi dilakukan untuk periode mendatang
-- Keuntungan: Menjaga integritas temporal data dan menghindari data leakage
-- Validasi dilakukan untuk memastikan tidak ada data leakage antar set
-
-### Alasan Pemilihan Teknik Preprocessing
-
-1. **Standardization:**
-   - Diperlukan untuk algoritma yang sensitif terhadap skala (Linear Regression, Ridge Regression)
-   - Membantu konvergensi yang lebih cepat dan stabil
-   - Tidak mengubah distribusi data, hanya mengubah skala
-   - Memastikan semua fitur memiliki kontribusi yang seimbang dalam model
-
-2. **Time-based Split:**
-   - Menjaga urutan temporal data
-   - Mencegah data leakage
-   - Mensimulasikan skenario prediksi real-world
-   - Memastikan model dapat menangkap pola temporal dengan baik
-
-3. **Feature Engineering:**
-   - Meningkatkan kemampuan model dalam menangkap pola
-   - Menambahkan konteks temporal
-   - Mengurangi multikolinearitas
-   - Memperkaya informasi yang tersedia untuk model
-
-4. **Outlier Handling:**
-   - Mempertahankan outlier karena merepresentasikan pergerakan harga yang valid
-   - Menghindari kehilangan informasi penting tentang volatilitas pasar
-   - Memastikan model dapat menangani anomali dengan baik
-
 ### Data Preparation
 
 Tahap data preparation melibatkan serangkaian transformasi dan preprocessing untuk mempersiapkan data agar optimal untuk pelatihan model machine learning.
@@ -271,16 +177,20 @@ train.head()
 ```
 
 ### Data Cleaning
+| Langkah            | Metode / Hasil                                                           | Keputusan                                                  |
+| ------------------ | ------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| **Missing values** | `df.isnull().sum()` ⇒ 0 di semua kolom                                   | Tidak perlu imputation                                     |
+| **Outlier check**  | Z-score \|z\| > 3 pada setiap fitur ⇒ 31 anomali (periode ekstrim pasar) | **Dipertahankan** karena merepresentasikan volatilitas sah |
+| **Duplicate rows** | `df.duplicated()` ⇒ 0                                                    | Tidak ada tindakan                                         |
 
 **Handling Missing Values:**
 - Dataset tidak memiliki missing values, sehingga tidak diperlukan penanganan khusus
 - Verifikasi dilakukan menggunakan `df.isnull().sum()` untuk memastikan kelengkapan data
-- Pengecekan dilakukan pada setiap kolom untuk memastikan tidak ada nilai yang hilang
+- Namun, setelah proses feature engineering, dilakukan penghapusan baris yang mengandung NA menggunakan `dropna()` untuk memastikan data yang digunakan model tidak memiliki nilai kosong
 
 **Handling Outliers:**
 - Deteksi outlier menggunakan metode Z-score dengan threshold |z| > 3
 - 31 titik anomali teridentifikasi pada periode 2038-2040
-- Analisis outlier dilakukan per fitur untuk memahami distribusi dan ekstremitas data
 - Outlier dipertahankan karena merepresentasikan pergerakan harga yang valid dalam konteks pasar saham
 - Tidak dilakukan penghapusan outlier karena dapat menghilangkan informasi penting tentang volatilitas pasar
 
@@ -288,77 +198,72 @@ train.head()
 - Pengecekan duplikat dilakukan menggunakan `df.duplicated()`
 - Tidak ditemukan data duplikat dalam dataset
 - Verifikasi dilakukan berdasarkan kombinasi Date dan OHLCV untuk memastikan keunikan setiap transaksi
-- Pengecekan tambahan dilakukan pada subset data untuk memastikan tidak ada duplikasi parsial
 
 ### Feature Engineering
-
 **Penciptaan Fitur Baru:**
 1. **Fitur Teknikal:**
-   - HL_PCT: Persentase selisih high-low terhadap close price
-   - CHG_PCT: Persentase perubahan harga dari open ke close
-   - Daily Return: Persentase perubahan harga penutupan
-   - Volatility: Standar deviasi return dalam window 20 hari
-   - Momentum: Perubahan harga dalam window 10 hari
+   - HL_PCT: Persentase selisih high-low terhadap close price untuk mengukur volatilitas intraday
+   - CHG_PCT: Persentase perubahan harga dari open ke close untuk mengukur momentum harian
 
 2. **Fitur Temporal:**
-   - Year: Tahun transaksi
-   - Month: Bulan transaksi
-   - Day: Hari dalam bulan
-   - Weekday: Hari dalam seminggu (0-6)
-   - Quarter: Kuartal dalam tahun
-   - Is_Month_End: Flag untuk akhir bulan
-   - Is_Quarter_End: Flag untuk akhir kuartal
+   - Year: Tahun transaksi untuk menangkap tren jangka panjang
+   - Month: Bulan transaksi untuk menangkap pola musiman
+   - Day: Hari dalam bulan untuk menangkap pola bulanan
+   - Weekday: Hari dalam seminggu (0-6) untuk menangkap pola mingguan
+
+**Fitur yang Digunakan untuk Model:**
+Berdasarkan implementasi kode, fitur final yang digunakan untuk melatih model adalah:
+- Open: Harga pembukaan
+- Volume: Volume perdagangan
+- RSI: Relative Strength Index (indikator teknikal)
+- MACD: Moving Average Convergence Divergence (indikator teknikal)
+- Sentiment: Sentimen pasar
+- Daily Return: Return harian
+- HL_PCT: Persentase high-low (fitur engineered)
+- CHG_PCT: Persentase perubahan harga (fitur engineered)
+- Year, Month, Day, Weekday: Fitur temporal (fitur engineered)
 
 **Penghapusan Fitur Redundan:**
-- Fitur High dan Low dihapus karena berkorelasi sangat tinggi (>0.95) dengan Open dan Close
+- Fitur High dan Low dihapus karena berkorelasi sangat tinggi dengan Close dan sudah direpresentasikan dalam fitur HL_PCT
 - Fitur Target dihapus karena tidak relevan untuk task regresi
-- Verifikasi korelasi menggunakan heatmap untuk memastikan tidak ada fitur yang redundan
-- Analisis VIF (Variance Inflation Factor) dilakukan untuk mengidentifikasi multikolinearitas
 
 ### Data Preprocessing
-
 **Standardization:**
 - Semua fitur numerik dinormalisasi menggunakan StandardScaler
 - Formula: $z = (x - μ) / σ$
   - x: nilai asli
   - μ: mean fitur
   - σ: standard deviation fitur
-- Tujuan: Memastikan semua fitur berada pada skala yang sama
-- Dampak: Meningkatkan konvergensi model dan mengurangi bias
-- Verifikasi distribusi setelah scaling untuk memastikan transformasi berhasil
+- Tujuan: Memastikan semua fitur berada pada skala yang sama untuk meningkatkan performa model
+- Scaling diterapkan pada 12 fitur yang telah dipilih dalam `feature_cols`
 
 **Time-based Split:**
-- Dataset dibagi berdasarkan aspek temporal
-- Training set: 80% data (periode 2010-2038)
-- Testing set: 20% data (periode 2038-2062)
+- Dataset dibagi berdasarkan aspek temporal dengan rasio 80:20
+- Training set: 80% data periode awal
+- Testing set: 20% data periode akhir
 - Alasan: Mensimulasikan kondisi real-world di mana prediksi dilakukan untuk periode mendatang
 - Keuntungan: Menjaga integritas temporal data dan menghindari data leakage
-- Validasi dilakukan untuk memastikan tidak ada data leakage antar set
 
 ### Alasan Pemilihan Teknik Preprocessing
+1. **Feature Selection:**
+   - Dipilih 12 fitur yang paling relevan berdasarkan analisis korelasi dan domain knowledge
+   - Kombinasi fitur teknikal (RSI, MACD), fundamental (Volume, Open), sentiment, dan temporal
+   - Fitur engineered (HL_PCT, CHG_PCT) menambah informasi volatilitas dan momentum
 
-1. **Standardization:**
-   - Diperlukan untuk algoritma yang sensitif terhadap skala (Linear Regression, Ridge Regression)
+2. **Standardization:**
+   - Diperlukan untuk algoritma yang sensitif terhadap skala
    - Membantu konvergensi yang lebih cepat dan stabil
-   - Tidak mengubah distribusi data, hanya mengubah skala
    - Memastikan semua fitur memiliki kontribusi yang seimbang dalam model
 
-2. **Time-based Split:**
-   - Menjaga urutan temporal data
-   - Mencegah data leakage
+3. **Time-based Split:**
+   - Menjaga urutan temporal data untuk mencegah data leakage
    - Mensimulasikan skenario prediksi real-world
    - Memastikan model dapat menangkap pola temporal dengan baik
 
-3. **Feature Engineering:**
-   - Meningkatkan kemampuan model dalam menangkap pola
-   - Menambahkan konteks temporal
-   - Mengurangi multikolinearitas
-   - Memperkaya informasi yang tersedia untuk model
-
-4. **Outlier Handling:**
-   - Mempertahankan outlier karena merepresentasikan pergerakan harga yang valid
-   - Menghindari kehilangan informasi penting tentang volatilitas pasar
-   - Memastikan model dapat menangani anomali dengan baik
+4. **Data Integrity:**
+   - Penghapusan NA memastikan konsistensi data input
+   - Pemeliharaan outlier untuk mempertahankan informasi volatilitas pasar
+   - Verifikasi tidak ada duplikat data untuk menghindari bias training
 
 ---
 
